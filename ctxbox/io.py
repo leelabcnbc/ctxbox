@@ -1,4 +1,14 @@
-"""module for converting back and forth cortex files."""
+"""module for converting back and forth cortex files.
+
+for loadcx and savecx, there's a legacy flag, and a workaround for legacy behavior.
+
+the original matlab version of the program can accept ndims(4) (nframes) to be 1 or 0 for
+single image, and will preserve this. However, it will always save nframe-1 (ndims(4)-1) for savecx
+when dealing with an movie with at least 2 images. According to the CTX file specification (see README.md),
+as well as for consistency, it's better to make saved nframes to be 0 when saving a single image.
+However, seems that this does not make a difference in practice.
+
+"""
 
 from struct import unpack, pack
 import numpy as np
