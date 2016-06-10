@@ -16,7 +16,7 @@ def _load_lut_raw(filename):
 def _check_ctx_header(width, height, nframe_m_1, depth=8):
     assert depth == 8, 'depth must be 8 bits'
     assert width >= 1 and height >= 1
-    assert nframe_m_1 == 0 or nframe_m_1 >= 2
+    assert nframe_m_1 >= 0
 
 
 def _check_ctx_data_range(frames):
@@ -58,6 +58,11 @@ def loadcx(bytes_or_filename, return_notes=False, keep_dims=False):
     bytes_per_frame = (bytes_header + width * height)
     total_bytes = nframe * bytes_per_frame
     total_bytes_actual = len(bytes_or_filename)
+    if total_bytes == total_bytes_actual + bytes_per_frame:
+        nframe -= 1
+        assert nframe == 1  # hack for the case when dmns(4)=1, and single image.
+        total_bytes = nframe * bytes_per_frame
+
     assert total_bytes_actual == total_bytes, 'size should be {} bytes, but is {}'.format(total_bytes,
                                                                                           total_bytes_actual)
 
@@ -75,7 +80,7 @@ def loadcx(bytes_or_filename, return_notes=False, keep_dims=False):
         return result
 
 
-def savecx(frames, filename=None, notes=''):
+def savecx(frames, filename=None, notes='', legacy=False):
     """save CTX file to a bytes or to a file
 
     Parameters
@@ -101,11 +106,13 @@ def savecx(frames, filename=None, notes=''):
     nframe, height, width = frames.shape
     _check_ctx_header(width, height, nframe - 1)
     depth = 8
-    header_normal = pack(_header_format, notes.encode(), depth, width, height, nframe - 1)
+    if legacy:
+        assert nframe == 1    # save dmns(4) = 1 in the file.
+    header_normal = pack(_header_format, notes.encode(), depth, width, height, nframe - (0 if legacy else 1))
     header_suc = pack(_header_format, notes.encode(), depth, width, height, 0)
 
     result = bytes()
-    for idx, data in frames:
+    for idx, data in enumerate(frames):
         if idx == 0:
             result += header_normal
         else:
